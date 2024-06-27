@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
-require('colors')
+require('colors');
+require('./config/mongo_connect')
 dotenv.config();
 const app = express();
 
