@@ -1,11 +1,13 @@
 const express = require('express');
-
+const dotenv = require('dotenv');
+require('colors')
+dotenv.config();
 const app = express();
 
 app.use(express.json());
 
-const PORT = 9000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-      console.log(`server is running on http://localhost:${PORT}`);
+      console.log(`server is running on http://localhost:${PORT}`.blue);
 })
