@@ -1,5 +1,5 @@
-const { Home, userRegister, userLogin } = require("../controller/auth.controller");
-
+const { Home, userRegister, userLogin, protected} = require("../controller/auth.controller");
+const auth = require('../middleware/auth.middleware')
 const router = require('express').Router();
 
 
@@ -16,4 +16,9 @@ router.post("/register", userRegister)
 // @access public
 
 router.post('/login', userLogin)
+
+// @route /api/home
+// @desc this route will login a user
+// @access protected
+router.get('/home', auth(), protected)
 module.exports = router

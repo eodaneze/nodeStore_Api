@@ -1,6 +1,10 @@
 const User = require('../model/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken')
+const dotenv = require('dotenv');
+dotenv.config();
+
+const jwtSecret = process.env.JWT_SECRET;
 const Home = (req, res) => {
     console.log("HELLO FROM NODE JS")
      res.send("THIS IS THE HOME ROUTE")
@@ -33,7 +37,7 @@ const userRegister = async(req, res) => {
 const userLogin = async(req, res) => {
   const {email, password} = req.body;
   try{
-      const user = User.findOne({email});
+      const user = await User.findOne({email});
       if(!user){
          return res.status(400).json({message: "User with this email dosnt exist"})
       }
@@ -53,12 +57,16 @@ const userLogin = async(req, res) => {
     }
 
 //   sign token
-  jwt.sign(payload, 'mad o!!', {expiresIn: '1h'}, (err, token) => {
-      if(err) throw err;
-      res.status(200).json({message: "Login successful", user, token})
-  })
+  jwt.sign(payload, jwtSecret, { expiresIn: "1h" }, (err, token) => {
+    if (err) throw err;
+    res.status(200).json({ message: "Login successful", user, token });
+  });
   }catch(error){
       res.status(500).send(error.message)
   }
 }
-module.exports = { Home, userRegister, userLogin };
+
+const protected = async(req, res)=>{
+     res.send("This is a protected route")
+}
+module.exports = { Home, userRegister, userLogin, protected};
