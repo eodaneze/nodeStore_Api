@@ -1,6 +1,9 @@
 const User = require('../model/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken')
+const transporter = require('../config/nodemailer.config');
+const random = require("@aspiesoft/random-number-js");
+const Token = require("../model/token.model")
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -28,7 +31,32 @@ const userRegister = async(req, res) => {
      })
        await newUser.save();
 
-       res.status(201).json({message: "Your registration was successful", newUser})
+       const token_code = random(100000, 999999);
+
+       const token = new Token({
+           userId: newUser._id,
+           token: token_code
+       })
+        await token.save();
+
+        const mailOptions = {
+             from: "Shopify",
+             to: newUser.email,
+             subject: "Email verification 📩📩",
+             template: "verify-email",
+             context: {
+                 name: newUser.firstName,
+                 code: token_code
+             }
+        }
+
+        transporter.sendMail(mailOptions, (error, info) => {
+             if(error){
+                console.error("Error sending email: ", error)
+                return res.status(500).json({message: "Error sending email", error: error.message})
+             }
+             res.status(201).json({message: `Your registration was successful 💃. a verification have been sent to ${newUser.email}`})
+        })
     }catch(err){
          res.status(500).send(err.message)
     }
@@ -67,6 +95,6 @@ const userLogin = async(req, res) => {
 }
 
 const protected = async(req, res)=>{
-     res.send("This is a protected route")
+     res.status(200).json({message: "Welcome to the protected route", user: req.user})
 }
 module.exports = { Home, userRegister, userLogin, protected};
