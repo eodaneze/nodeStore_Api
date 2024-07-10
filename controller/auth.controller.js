@@ -62,6 +62,28 @@ const userRegister = async(req, res) => {
     }
 }
 
+const verifyEmail = async(req, res) => {
+     const {email, token} = req.body;
+
+     const user = await User.findOne({email});
+     console.log("the user is:", user)
+     if(!user){
+        return res.status(400).send("User not found");
+     }
+     if (user.isverified) {
+       return res.send("Email is already verified, you can login");
+     }
+     let VToken = await Token.findOne({userId: user._id});
+     if(!VToken){
+         return res.status(400).send("Invalid or expired email verification token");
+     }
+     if(VToken.token !== token){
+         return res.status(400).send("Invalid or expired verification code");
+     }
+    await User.findOneAndUpdate({ _id: user._id },{ isverified: true },{ new: true });
+     await VToken.deleteOne();
+    return res.status(200).json({message: "Yo!, your email have been verified 💃💃💃"})
+}
 const userLogin = async(req, res) => {
   const {email, password} = req.body;
   try{
@@ -76,6 +98,9 @@ const userLogin = async(req, res) => {
     if(!isMatch){
          return res.status(400).json({message: "Incorrect password"})
     }
+     if (!user.isverified) {
+       return res.status(405).json({ message: "Email is not verified 📩📩" });
+     }
 
     // create jwt payload
     const payload = {
@@ -97,4 +122,4 @@ const userLogin = async(req, res) => {
 const protected = async(req, res)=>{
      res.status(200).json({message: "Welcome to the protected route", user: req.user})
 }
-module.exports = { Home, userRegister, userLogin, protected};
+module.exports = { Home, userRegister, userLogin, protected, verifyEmail };

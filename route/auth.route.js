@@ -1,4 +1,4 @@
-const { Home, userRegister, userLogin, protected} = require("../controller/auth.controller");
+const { Home, userRegister, userLogin, protected, verifyEmail} = require("../controller/auth.controller");
 const auth = require('../middleware/auth.middleware')
 const router = require('express').Router();
 
@@ -21,4 +21,7 @@ router.post('/login', userLogin)
 // @desc this route will login a user
 // @access protected
 router.get('/home', auth(), protected)
+
+
+router.post('/verify-email', verifyEmail)
 module.exports = router
