@@ -17,10 +17,6 @@ router.post("/register", userRegister)
 
 router.post('/login', userLogin)
 
-// @route /api/home
-// @desc this route will login a user
-// @access protected
-router.get('/home', auth(), protected)
 
 
 router.post('/verify-email', verifyEmail)

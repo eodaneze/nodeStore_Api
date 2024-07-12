@@ -52,4 +52,13 @@ function auth(){
      }
 }
 
-module.exports = auth
+function isAdmin(){
+      return (req, res, next) => {
+             if(req.user && req.user.isAdmin){
+                    next();
+             }else{
+                   return res.status(403).send("Forbidden: you do not have the neccessary permission")
+             }
+      }
+}
+module.exports = {auth, isAdmin}
