@@ -55,4 +55,19 @@ const getUserProfile = async(req, res) => {
       res.status(500).send("An error occured")
   }
 }
-module.exports = { updateUser, deleteUserAccount, getUserProfile };
+
+const getAllUsers = async(req, res) => {
+     try{
+            const users = await User.find({});
+
+            if(!users){
+                  res.status(400).json({message: "No user have registered into this system"})
+            }
+
+            res.status(200).json({message: "Users have been fetched successfully", users})
+     }catch(error){
+         console.log("Error getting users:", error);
+         res.status(500).send("Error occured:", error)
+     }
+}
+module.exports = { updateUser, deleteUserAccount, getUserProfile, getAllUsers };

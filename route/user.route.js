@@ -1,4 +1,4 @@
-const { updateUser, deleteUserAccount, getUserProfile} = require("../controller/user.controller");
+const { updateUser, deleteUserAccount, getUserProfile, getAllUsers} = require("../controller/user.controller");
 const {auth , isAdmin} = require("../middleware/auth.middleware");
 const router = require("express").Router();
 
