@@ -1,4 +1,4 @@
-const { addProduct } = require("../controller/product.controller");
+const { addProduct, editProduct } = require("../controller/product.controller");
 const {auth, isAdmin} = require("../middleware/auth.middleware");
 const router = require("express").Router();
 const upload = require('../middleware/multer.middleware')
@@ -8,7 +8,8 @@ const upload = require('../middleware/multer.middleware')
 // @access private - only admin can add product to db
 
 
-router.post('/add-product', auth(), isAdmin(), upload.array('image', 5),  addProduct)
+router.post('/add-product', auth(), isAdmin(), upload.single('image'),  addProduct)
+router.patch('/edit-product/:id', auth(), isAdmin(), upload.single('image'),  editProduct)
 
 
 module.exports = router;
