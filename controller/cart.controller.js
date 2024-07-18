@@ -42,4 +42,22 @@ const addToCart = async(req, res) => {
      }
 }
 
-module.exports = {addToCart };
+const viewCart = async(req, res) => {
+     try{
+         const userId = req.user._id;
+         const cartItems = await Cart.find({userId}).populate("productId");
+         
+         if(!cartItems){
+             res.status(404).json({message: "Your cart is empty"});
+         }
+         let totalAmount = 0;
+
+         cartItems.forEach((item) => {
+           totalAmount += item.productId.price * item.quantity;
+         });
+         res.status(200).json({cartItems, totalAmount})
+     }catch(error){
+         res.status(500).send(error)
+     }
+}
+module.exports = { addToCart, viewCart };
