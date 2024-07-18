@@ -10,7 +10,8 @@ const upload = require('../middleware/multer.middleware')
 
 router.post('/add-product', auth(), isAdmin(), upload.single('image'),  addProduct)
 router.patch('/edit-product/:id', auth(), isAdmin(), upload.single('image'),  editProduct)
-router.get('/get-products', getproducts)
+router.get('/get-products', getproducts);
+
 
 
 module.exports = router;
