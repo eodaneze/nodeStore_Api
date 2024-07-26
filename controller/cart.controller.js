@@ -1,98 +1,148 @@
-const Cart = require('../model/cart.model')
-const Product = require('../model/product.model')
-const User = require('../model/user.model');
-const { initializePayment } = require("../service/payment.service");
+// controllers/cartController.js
+const Cart = require("../model/cart.model");
+const Product = require("../model/product.model");
+const User = require("../model/user.model");
+const {
+  initializePayment,
+  verifyPayment,
+} = require("../service/payment.service");
+const addToCart = async (req, res) => {
+  try {
+    const userId = req.user._id;
 
+    const { productId, quantity } = req.body;
 
-const addToCart = async(req, res) => {
-     try{
-          const userId = req.user._id;
+    // validate if a user is logged in
+    const user = User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "Please login to add product to cart" });
+    }
+    // Validate the product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    // Check if the quantity requested is available in stock
+    if (quantity > product.inStock) {
+      return res
+        .status(400)
+        .json({ message: `Only ${product.inStock} units available in stock` });
+    }
+    // Check if the product is already in the cart for the user
+    let cartItem = await Cart.findOne({ userId, productId });
 
-          const {productId, quantity} = req.body;
+    if (cartItem) {
+      // If the product is already in the cart, update the quantity
+      cartItem.quantity += quantity;
+      await cartItem.save();
+    } else {
+      // If the product is not in the cart, create a new cart item
+      cartItem = new Cart({
+        userId,
+        productId,
+        quantity,
+      });
+      await cartItem.save();
+    }
 
-        //   check if the product exists
-        const product = await Product.findById(productId);
-        if(!product){
-             return res.status(404).json({message: "product not found"})
-        }
-        // check if the quantity requested is available inStock
+    res.status(200).json({ message: "Product added to cart", cartItem });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error adding product to cart", error: error.message });
+  }
+};
+const viewCart = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const cartItems = await Cart.find({ userId }).populate("productId");
+    if (cartItems.length === 0) {
+      return res.status(400).json({ message: "Your cart is empty" });
+    }
+    let totalAmount = 0;
 
-        if(quantity > product.inStock){
-             return res.status(400).json({message: `Only ${product.inStock} units available in stock`})
-        }
+    cartItems.forEach((item) => {
+      totalAmount += item.productId.price * item.quantity;
+    });
 
-        // check if the product is already in the cart for the user
-        
-        let cartItem = await Cart.findOne({userId, productId});
-        if(cartItem){
-            //  if the product is already in the cart, update the quantity
-            cartItem.quantity += quantity
-            await cartItem.save();
-        }else{
-            //  if the product is not in cart, then add it to the cart
-            cartItem = new Cart({
-                 userId,
-                 productId,
-                 quantity
-            })
-            await cartItem.save();
-        }
-        res.status(200).json({message: "product have been added to cart successfully", cartItem})
-     }catch(error){
-        res.status(500).send(error)
-     }
-}
+    res.status(200).json({ cartItems, totalAmount });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching cart", error: error.message });
+  }
+};
 
-const viewCart = async(req, res) => {
-     try{
-         const userId = req.user._id;
-         const cartItems = await Cart.find({userId}).populate("productId");
-         
-         if(!cartItems){
-             res.status(404).json({message: "Your cart is empty"});
-         }
-         let totalAmount = 0;
+const editCart = async (req, res) => {
+  try {
+    const { userId, productId } = req.params;
+    const { quantity } = req.body;
 
-         cartItems.forEach((item) => {
-           totalAmount += item.productId.price * item.quantity;
-         });
-         res.status(200).json({cartItems, totalAmount})
-     }catch(error){
-         res.status(500).send(error)
-     }
-}
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
 
-const deleteCart = async(req, res) => {
-      try{
-          const userId = req.user._id;
-          const {productId} = req.params;
+    if (quantity > product.inStock) {
+      return res.status(400).json({
+        message: `Only ${product.inStock} units available in stock`,
+      });
+    }
 
-          const cartItem = await Cart.findOneAndDelete({userId, productId});
-          if(cartItem.length === 0){
-                return res.status(400).send("Your cart is empty")
-          }
-          res.status(200).json({message: "cart item have been deleted successfully", cartItem})
-      }catch(error){
-           res.status(500).send(error)
-      }
-}
+    let cartItem = await Cart.findOne({ userId, productId });
+    if (!cartItem) {
+      return res.status(404).json({ message: "Cart item not found" });
+    }
 
-const clearCart = async(req, res) => {
-       try{
-           const userId = req.user._id;
+    cartItem.quantity = quantity;
+    await cartItem.save();
 
-           await Cart.deleteMany({userId});
+    res.status(200).json({ message: "Cart item updated", cartItem });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error updating cart item", error: error.message });
+  }
+};
 
-           res.status(200).json({message: "Cart have been cleared successfully"})
-       }catch(error){
-           res.status(500).json({message: "Error clearing cart", error})
-       }
-}
+const deleteCartItem = async (req, res) => {
+  try {
+    const { userId, productId } = req.params;
 
+    const cartItem = await Cart.findOneAndDelete({ userId, productId });
+    if (!cartItem) {
+      return res.status(404).json({ message: "Cart item not found" });
+    }
+    if (cartItem) {
+      return res.status();
+    }
+    res.status(200).json({ message: "Cart item deleted", cartItem });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting cart item", error: error.message });
+  }
+};
+
+const clearCart = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    await Cart.deleteMany({ userId });
+
+    res.status(200).json({ message: "Cart cleared" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error clearing cart", error: error.message });
+  }
+};
 
 const checkout = async (req, res) => {
   try {
-     const userId  = req.user._id
+    const userId = req.user._id;
     const { redirectUrl} = req.body;
     const cartItems = await Cart.find({ userId }).populate("productId");
 
@@ -119,12 +169,12 @@ const checkout = async (req, res) => {
       tx_ref: `tx-${Date.now()}`,
       amount: totalAmount,
       currency: "NGN",
-      redirect_url: redirectUrl,
+      redirect_url: `${redirectUrl}?userId=${userId}`,
       payment_type: "card",
       customer: {
         email: user.email,
-        phonenumber: user.phone,
-        name: user.firstName,
+        phonenumber: user.phoneNumber,
+        name: `${user.firstName} ${user.lastName}`,
       },
       customizations: {
         title: "Payment for Products in Cart",
@@ -148,7 +198,11 @@ const checkout = async (req, res) => {
       .json({ message: "Error initializing payment", error: error.message });
   }
 };
-
-
-
-module.exports = { addToCart, viewCart, deleteCart, clearCart, checkout };
+module.exports = {
+  addToCart,
+  viewCart,
+  editCart,
+  deleteCartItem,
+  clearCart,
+  checkout,
+};
