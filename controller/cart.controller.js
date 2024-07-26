@@ -1,6 +1,7 @@
 const Cart = require('../model/cart.model')
 const Product = require('../model/product.model')
-const User = require('../model/user.model')
+const User = require('../model/user.model');
+const { initializePayment } = require("../service/payment.service");
 
 
 const addToCart = async(req, res) => {
@@ -60,4 +61,94 @@ const viewCart = async(req, res) => {
          res.status(500).send(error)
      }
 }
-module.exports = { addToCart, viewCart };
+
+const deleteCart = async(req, res) => {
+      try{
+          const userId = req.user._id;
+          const {productId} = req.params;
+
+          const cartItem = await Cart.findOneAndDelete({userId, productId});
+          if(cartItem.length === 0){
+                return res.status(400).send("Your cart is empty")
+          }
+          res.status(200).json({message: "cart item have been deleted successfully", cartItem})
+      }catch(error){
+           res.status(500).send(error)
+      }
+}
+
+const clearCart = async(req, res) => {
+       try{
+           const userId = req.user._id;
+
+           await Cart.deleteMany({userId});
+
+           res.status(200).json({message: "Cart have been cleared successfully"})
+       }catch(error){
+           res.status(500).json({message: "Error clearing cart", error})
+       }
+}
+
+
+const checkout = async (req, res) => {
+  try {
+     const userId  = req.user._id
+    const { redirectUrl} = req.body;
+    const cartItems = await Cart.find({ userId }).populate("productId");
+
+    if (cartItems.length === 0) {
+      return res.status(400).json({ message: "Your cart is empty" });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    // Check if user details (phone number and address) are updated
+    if (!user.phone || !user.address) {
+      return res.status(400).json({
+        message:
+          "Please update your phone number and address before checking out",
+      });
+    }
+    let totalAmount = 0;
+
+    cartItems.forEach((item) => {
+      totalAmount += item.productId.price * item.quantity;
+    });
+    const paymentData = {
+      tx_ref: `tx-${Date.now()}`,
+      amount: totalAmount,
+      currency: "NGN",
+      redirect_url: redirectUrl,
+      payment_type: "card",
+      customer: {
+        email: user.email,
+        phonenumber: user.phone,
+        name: user.firstName,
+      },
+      customizations: {
+        title: "Payment for Products in Cart",
+        description: "Payment for products in cart",
+        logo: "https://example.com/logo.png",
+      },
+    };
+    // Proceed with payment initialization
+    const response = await initializePayment(paymentData);
+    if (response.status !== "success") {
+      return res
+        .status(400)
+        .json({ message: "Payment initialization failed", data: response });
+    }
+    const paymentUrl = response.data.link;
+    // Redirect the user to the payment URL
+    res.status(200).json({ message: "Payment initialized", paymentUrl });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error initializing payment", error: error.message });
+  }
+};
+
+
+
+module.exports = { addToCart, viewCart, deleteCart, clearCart, checkout };
